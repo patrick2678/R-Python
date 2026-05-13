@@ -1,0 +1,65 @@
+from app.tests.helpers import auth_headers, get_token, login_user, register_user
+
+
+def test_register_user(client):
+    response = register_user(client, username="testuser", email="test@example.com")
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["username"] == "testuser"
+    assert data["email"] == "test@example.com"
+    assert data["role"] == "reader"
+
+
+def test_register_duplicate_email(client):
+    register_user(client, username="user1", email="same@example.com")
+
+    response = register_user(client, username="user2", email="same@example.com")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Email already registered"
+
+
+def test_login_user(client):
+    register_user(client, username="loginuser", email="login@example.com")
+    response = login_user(client, email="login@example.com")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+
+def test_login_rejects_wrong_password(client):
+    register_user(client, username="loginuser", email="login@example.com")
+    response = login_user(client, email="login@example.com", password="wrong")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"
+
+
+def test_protected_route_requires_token(client):
+    response = client.get("/users/me")
+
+    assert response.status_code == 401
+
+
+def test_token_allows_current_user_profile(client):
+    token = get_token(client, username="profileuser", email="profile@example.com")
+    response = client.get("/users/me", headers=auth_headers(token))
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "profile@example.com"
+
+
+def test_validation_rejects_invalid_email(client):
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "bademail",
+            "email": "not-an-email",
+            "password": "123",
+        },
+    )
+
+    assert response.status_code == 422

@@ -1,24 +1,37 @@
-from datetime import datetime, timedelta, timezone
-
-from jose import jwt
-from passlib.context import CryptContext
-
-from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+import json
+import logging
+from datetime import datetime, timezone
 
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+
+        return json.dumps(log_record, ensure_ascii=True)
 
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+def setup_logger():
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[
+            logging.FileHandler("app.log", encoding="utf-8"),
+            logging.StreamHandler()
+        ]
+    )
+
+    logger = logging.getLogger("blog_app")
+    for handler in logging.getLogger().handlers:
+        handler.setFormatter(JsonFormatter())
+
+    return logger
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def create_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+logger = setup_logger()

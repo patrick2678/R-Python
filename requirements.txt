@@ -1,0 +1,233 @@
+# Blog Management System
+
+Backend project for the DSC 306 FastAPI group assignment. The system implements a blogging platform with users, posts, comments, JWT authentication, role-based authorization, Redis caching, logging, monitoring, API tests, Docker support, and a simple frontend.
+
+## Project Idea
+
+Selected idea: **Project 4 - Blog Management System**
+
+Entities:
+
+- Users
+- Posts
+- Comments
+
+Roles:
+
+- `admin`: full moderation control, user role management, post/comment moderation
+- `author`: create and manage own posts, comment on posts
+- `reader`: view posts and create/manage own comments
+
+Default admin account for local testing:
+
+- Email: `admin@blog.com`
+- Password: `123`
+
+## Features Covered
+
+- Modular FastAPI structure: routes, models, schemas, services, core utilities, tests
+- RESTful CRUD for posts
+- RESTful CRUD for comments, including nested comments through `parent_id`
+- User registration, login, profile endpoint, and admin-only user listing/role update
+- JWT token generation and token validation
+- Role-based authorization and ownership checks
+- Pydantic request validation and response models
+- HTTPException-based error handling with clear messages
+- Redis cache-aside pattern for frequently read posts and comments
+- Cache invalidation after create, update, and delete operations
+- Structured JSON logging to `app.log`
+- Monitoring dashboard with request counts, response times, status codes, cache hits/misses, recent errors, and health status
+- Pytest test suite using FastAPI `TestClient`
+- Simple HTML/CSS/JavaScript frontend served from FastAPI
+- Dockerfile and docker-compose stack for API plus Redis
+
+## Project Structure
+
+```text
+app/
+  core/          logging, metrics, cache, security, admin initialization
+  models/        SQLAlchemy database models
+  routes/        FastAPI routers
+  schemas/       Pydantic request and response models
+  services/      business logic and database operations
+  tests/         pytest API tests
+  main.py        FastAPI application entry point
+frontend/        static frontend integration
+Dockerfile
+docker-compose.yml
+requirements.txt
+```
+
+## Local Setup
+
+Create and activate a virtual environment:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+Install dependencies:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Start Redis locally. If Redis is not running, the API still works, but cache operations are disabled and reported as misses.
+
+Run the API:
+
+```powershell
+python -m uvicorn app.main:app --reload
+```
+
+Open:
+
+- API docs: http://127.0.0.1:8000/docs
+- Monitoring dashboard: http://127.0.0.1:8000/dashboard/
+- Health check: http://127.0.0.1:8000/dashboard/health
+- Frontend: http://127.0.0.1:8000/frontend/
+
+## Docker Setup
+
+Build and run the API with Redis:
+
+```powershell
+docker compose up --build
+```
+
+Open:
+
+- API: http://127.0.0.1:8000
+- Docs: http://127.0.0.1:8000/docs
+- Frontend: http://127.0.0.1:8000/frontend/
+- Dashboard: http://127.0.0.1:8000/dashboard/
+
+Stop containers:
+
+```powershell
+docker compose down
+```
+
+## Testing
+
+Run all tests:
+
+```powershell
+python -m pytest app/tests/ -v
+```
+
+The test suite covers:
+
+- Registration, login, token usage, invalid login, validation errors
+- Protected endpoint access
+- Role restrictions for post creation
+- Post CRUD and ownership checks
+- Comment CRUD, nested comments, ownership checks, missing resources
+- Monitoring metrics and health endpoint
+
+## Main API Endpoints
+
+Authentication:
+
+- `POST /auth/register`
+- `POST /auth/login`
+
+Users:
+
+- `GET /users/me`
+- `PUT /users/me`
+- `GET /users/` admin only
+- `PUT /users/{user_id}/role` admin only
+
+Posts:
+
+- `GET /posts/`
+- `GET /posts/{post_id}`
+- `POST /posts/` author/admin only
+- `PUT /posts/{post_id}` owner/admin only
+- `DELETE /posts/{post_id}` owner/admin only
+
+Comments:
+
+- `GET /comments/`
+- `GET /comments/{comment_id}`
+- `GET /comments/post/{post_id}`
+- `POST /comments/` authenticated users
+- `PUT /comments/{comment_id}` owner/admin only
+- `DELETE /comments/{comment_id}` owner/admin only
+
+Monitoring:
+
+- `GET /dashboard/`
+- `GET /dashboard/metrics`
+- `GET /dashboard/health`
+
+## Redis Caching
+
+The project uses a cache-aside pattern:
+
+- First request checks Redis by key.
+- Cache miss reads from the database and stores the response.
+- Cache hit returns Redis data directly.
+- Create, update, and delete operations invalidate affected cache keys.
+
+Cached resources:
+
+- `GET /posts/`
+- `GET /posts/{post_id}`
+- `GET /comments/`
+- `GET /comments/{comment_id}`
+- `GET /comments/post/{post_id}`
+
+Cache hit/miss counts and response-time metrics are visible at `/dashboard/metrics` and `/dashboard/`.
+
+## Logging and Monitoring
+
+Structured JSON logs are written to `app.log` and the console. Logs include:
+
+- Incoming requests
+- Completed responses with status code and response time
+- Authentication events
+- Token validation events
+- CRUD operations
+- Authorization failures
+- Error details
+
+The dashboard shows:
+
+- Total requests
+- Total errors
+- Average response time
+- Per-endpoint counts and average response times
+- Status code counts
+- Cache hits and misses
+- Recent error entries
+- API and Redis health status
+
+## Git and GitHub Collaboration
+
+Recommended branch workflow:
+
+- `main`: stable submission branch
+- `develop`: integration branch
+- `feature/auth`
+- `feature/posts`
+- `feature/comments`
+- `feature/cache-monitoring`
+- `feature/tests-docs-docker`
+
+Each team member should commit their own work from their own GitHub account. Avoid one-person bulk commits because the grading sheet says individual contribution history is evaluated.
+
+Team member roles:
+
+| Member | Responsibility |
+| --- | --- |
+| Member 1 | Authentication and user roles |
+| Member 2 | Posts API and ownership rules |
+| Member 3 | Comments API and nested comments |
+| Member 4 | Redis caching and invalidation |
+| Member 5 | Logging, monitoring dashboard, Docker |
+| Member 6 | API tests, README, frontend integration |
+
+Replace the placeholder member names/responsibilities with the real team information before submission.
